@@ -116,7 +116,7 @@ func (img *imageHDU) Read(ptr interface{}) error {
 		return v
 	}
 
-	bdec := binary.NewDecoder(bytes.NewBuffer(img.raw))
+	bdec := binary.NewDecoder(bytes.NewReader(img.raw))
 	bdec.Order = binary.BigEndian
 
 	switch hdr.Bitpix() {
@@ -216,9 +216,22 @@ func (img *imageHDU) Read(ptr interface{}) error {
 		}
 
 	case -64:
-		itype := reflect.TypeOf((*byte)(nil)).Elem()
+		itype := reflect.TypeOf((*float64)(nil)).Elem()
 		if !rt.Elem().ConvertibleTo(itype) {
 			return fmt.Errorf("fitsio: can not convert []float64 to %s", rt.Name())
+		}
+		if itype == otype {
+			slice := rv.Interface().([]float64)
+			return bdec.Decode(&slice)
+
+			for i := 0; i < nelmts; i++ {
+				v := &slice[i]
+				err = bdec.Decode(v)
+				if err != nil {
+					return fmt.Errorf("fitsio: %v", err)
+				}
+			}
+			return nil
 		}
 		if itype != otype {
 			cnv = func(v reflect.Value) reflect.Value {
